@@ -36,7 +36,9 @@ And the code is organized as this:
 
 Integration with Spring Security and add other filter for jwt token process.
 
-The secret key is stored in `application.properties`.
+The JWT signing secret is read from the `JWT_SECRET` environment variable (`jwt.secret=${JWT_SECRET}` in `application.properties`). It is never committed. The app refuses to start if `JWT_SECRET` is missing or shorter than 64 bytes, the minimum for HS512.
+
+Tests use a test-only value from `src/test/resources/config/application.properties`. CI generates a fresh random value for each run.
 
 # Database
 
@@ -46,7 +48,12 @@ It uses a ~~H2 in-memory database~~ sqlite database (for easy local test without
 
 You'll need Java 11 installed.
 
+Set a JWT signing secret of at least 64 bytes, then start the app:
+
+    export JWT_SECRET="$(openssl rand -base64 64 | tr -d '\n')"
     ./gradlew bootRun
+
+Use a different secret for each environment and keep production secrets in your secret manager, not in the repo or shell history. Changing the secret invalidates all issued tokens.
 
 To test that it works, open a browser tab at http://localhost:8080/tags .  
 Alternatively, you can run
@@ -58,7 +65,7 @@ Alternatively, you can run
 You'll need Docker installed.
 	
     ./gradlew bootBuildImage --imageName spring-boot-realworld-example-app
-    docker run -p 8081:8080 spring-boot-realworld-example-app
+    docker run -p 8081:8080 -e JWT_SECRET spring-boot-realworld-example-app
 
 # Try it out with a RealWorld frontend
 
@@ -69,6 +76,8 @@ The entry point address of the backend API is at http://localhost:8080, **not** 
 The repository contains a lot of test cases to cover both api test and repository test.
 
     ./gradlew test
+
+Tests don't need `JWT_SECRET`; they use the test-only secret in `src/test/resources/config/application.properties`.
 
 # Code format
 

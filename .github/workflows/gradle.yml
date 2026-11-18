@@ -22,7 +22,7 @@ jobs:
       with:
         distribution: zulu
         java-version: '11'
-    - uses: actions/cache@v2
+    - uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
@@ -30,5 +30,21 @@ jobs:
         key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*') }}
         restore-keys: |
           ${{ runner.os }}-gradle-
+    - name: Generate CI-only JWT secret
+      run: echo "JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')" >> "$GITHUB_ENV"
     - name: Test with Gradle
       run: ./gradlew clean test
+    - name: Check app refuses to start without JWT_SECRET
+      run: |
+        ./gradlew bootJar
+        jar=$(ls build/libs/*.jar | grep -v -- '-plain.jar$')
+        set +e
+        env -u JWT_SECRET timeout 120 java -jar "$jar" > startup.log 2>&1
+        status=$?
+        set -e
+        tail -n 20 startup.log
+        if [ "$status" -eq 0 ] || [ "$status" -eq 124 ]; then
+          echo "App started (or hung) without JWT_SECRET; expected fail-fast"
+          exit 1
+        fi
+        grep -q "JWT_SECRET" startup.log

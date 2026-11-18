@@ -6,6 +6,7 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.spring.core.service.JwtService;
 import io.spring.core.user.User;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.Optional;
 import javax.crypto.SecretKey;
@@ -16,6 +17,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class DefaultJwtService implements JwtService {
+  static final int MIN_SECRET_BYTES = 64;
+
   private final SecretKey signingKey;
   private final SignatureAlgorithm signatureAlgorithm;
   private int sessionTime;
@@ -23,9 +26,30 @@ public class DefaultJwtService implements JwtService {
   @Autowired
   public DefaultJwtService(
       @Value("${jwt.secret}") String secret, @Value("${jwt.sessionTime}") int sessionTime) {
+    byte[] secretBytes = validSecretBytes(secret);
     this.sessionTime = sessionTime;
     signatureAlgorithm = SignatureAlgorithm.HS512;
-    this.signingKey = new SecretKeySpec(secret.getBytes(), signatureAlgorithm.getJcaName());
+    this.signingKey = new SecretKeySpec(secretBytes, signatureAlgorithm.getJcaName());
+  }
+
+  private static byte[] validSecretBytes(String secret) {
+    if (secret == null || secret.trim().isEmpty()) {
+      throw new IllegalStateException(
+          "jwt.secret is not set. Set the JWT_SECRET environment variable to a random value of at"
+              + " least "
+              + MIN_SECRET_BYTES
+              + " bytes.");
+    }
+    byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
+    if (bytes.length < MIN_SECRET_BYTES) {
+      throw new IllegalStateException(
+          "jwt.secret is too short for HS512: "
+              + bytes.length
+              + " bytes, need at least "
+              + MIN_SECRET_BYTES
+              + ". Set JWT_SECRET to a longer random value.");
+    }
+    return bytes;
   }
 
   @Override
