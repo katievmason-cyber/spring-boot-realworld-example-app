@@ -9,11 +9,34 @@ import org.junit.jupiter.api.Test;
 
 public class DefaultJwtServiceTest {
 
+  private static final String TEST_SECRET =
+      "test-only-jwt-secret-do-not-use-in-production-0123456789abcdefghijklmnopqrstuvwxyz";
+
   private JwtService jwtService;
 
   @BeforeEach
   public void setUp() {
-    jwtService = new DefaultJwtService("123123123123123123123123123123123123123123123123123123123123", 3600);
+    jwtService = new DefaultJwtService(TEST_SECRET, 3600);
+  }
+
+  @Test
+  public void should_reject_missing_secret() {
+    Assertions.assertThrows(IllegalStateException.class, () -> new DefaultJwtService(null, 3600));
+    Assertions.assertThrows(IllegalStateException.class, () -> new DefaultJwtService("", 3600));
+    Assertions.assertThrows(IllegalStateException.class, () -> new DefaultJwtService("  ", 3600));
+  }
+
+  @Test
+  public void should_reject_secret_shorter_than_64_bytes() {
+    String shortSecret = TEST_SECRET.substring(0, DefaultJwtService.MIN_SECRET_BYTES - 1);
+    Assertions.assertThrows(
+        IllegalStateException.class, () -> new DefaultJwtService(shortSecret, 3600));
+  }
+
+  @Test
+  public void should_accept_secret_of_exactly_64_bytes() {
+    String secret = TEST_SECRET.substring(0, DefaultJwtService.MIN_SECRET_BYTES);
+    Assertions.assertDoesNotThrow(() -> new DefaultJwtService(secret, 3600));
   }
 
   @Test
