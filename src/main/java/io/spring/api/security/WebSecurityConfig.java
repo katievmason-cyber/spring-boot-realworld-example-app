@@ -2,6 +2,7 @@ package io.spring.api.security;
 
 import static java.util.Arrays.asList;
 
+import jakarta.servlet.DispatcherType;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -52,7 +53,9 @@ public class WebSecurityConfig {
             session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(
             auth ->
-                auth.requestMatchers(HttpMethod.OPTIONS)
+                auth.dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
+                    .requestMatchers(HttpMethod.OPTIONS)
                     .permitAll()
                     .requestMatchers("/graphiql")
                     .permitAll()
