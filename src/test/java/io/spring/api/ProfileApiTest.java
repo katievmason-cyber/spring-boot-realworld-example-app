@@ -2,7 +2,9 @@ package io.spring.api;
 
 import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.core.IsEqual.equalTo;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -73,6 +75,33 @@ public class ProfileApiTest extends TestWithCurrentUser {
         .then()
         .statusCode(200);
     verify(userRepository).saveRelation(new FollowRelation(user.getId(), anotherUser.getId()));
+  }
+
+  @Test
+  public void should_reject_following_yourself() throws Exception {
+    given()
+        .header("Authorization", "Token " + token)
+        .when()
+        .post("/profiles/{username}/follow", user.getUsername())
+        .then()
+        .statusCode(422)
+        .body("message", equalTo("cannot follow yourself"));
+    verify(userRepository, never()).saveRelation(any());
+  }
+
+  @Test
+  public void should_not_duplicate_follow_relation() throws Exception {
+    when(userRepository.findRelation(eq(user.getId()), eq(anotherUser.getId())))
+        .thenReturn(Optional.of(new FollowRelation(user.getId(), anotherUser.getId())));
+    when(profileQueryService.findByUsername(eq(profileData.getUsername()), eq(user)))
+        .thenReturn(Optional.of(profileData));
+    given()
+        .header("Authorization", "Token " + token)
+        .when()
+        .post("/profiles/{username}/follow", anotherUser.getUsername())
+        .then()
+        .statusCode(200);
+    verify(userRepository, never()).saveRelation(any());
   }
 
   @Test
