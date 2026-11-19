@@ -22,6 +22,14 @@ repositories {
     mavenCentral()
 }
 
+// Patched transitive versions for CVEs found by dependency scanning (see PR).
+ext['tomcat.version'] = '10.1.62'
+ext['spring-framework.version'] = '6.1.21'
+ext['jackson-bom.version'] = '2.22.3'
+ext['log4j2.version'] = '2.26.1'
+ext['json-smart.version'] = '2.5.2'
+ext['commons-lang3.version'] = '3.18.0'
+
 configurations {
     compileOnly {
         extendsFrom annotationProcessor
@@ -41,6 +49,10 @@ dependencies {
                 'io.jsonwebtoken:jjwt-jackson:0.12.6'
     implementation 'joda-time:joda-time:2.12.7'
     implementation 'org.xerial:sqlite-jdbc:3.45.3.0'
+
+    constraints {
+        implementation 'com.google.protobuf:protobuf-java:3.25.5'
+    }
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
