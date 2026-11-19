@@ -31,9 +31,11 @@ public class ArticleFavoriteApi {
       @PathVariable("slug") String slug, @AuthenticationPrincipal User user) {
     Article article =
         articleRepository.findBySlug(slug).orElseThrow(ResourceNotFoundException::new);
-    ArticleFavorite articleFavorite = new ArticleFavorite(article.getId(), user.getId());
-    articleFavoriteRepository.save(articleFavorite);
-    return responseArticleData(articleQueryService.findBySlug(slug, user).get());
+    if (!articleFavoriteRepository.find(article.getId(), user.getId()).isPresent()) {
+      articleFavoriteRepository.save(new ArticleFavorite(article.getId(), user.getId()));
+    }
+    return responseArticleData(
+        articleQueryService.findBySlug(slug, user).orElseThrow(ResourceNotFoundException::new));
   }
 
   @DeleteMapping
@@ -47,7 +49,8 @@ public class ArticleFavoriteApi {
             favorite -> {
               articleFavoriteRepository.remove(favorite);
             });
-    return responseArticleData(articleQueryService.findBySlug(slug, user).get());
+    return responseArticleData(
+        articleQueryService.findBySlug(slug, user).orElseThrow(ResourceNotFoundException::new));
   }
 
   private ResponseEntity<HashMap<String, Object>> responseArticleData(

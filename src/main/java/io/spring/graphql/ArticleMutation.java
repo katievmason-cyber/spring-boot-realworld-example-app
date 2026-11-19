@@ -74,8 +74,9 @@ public class ArticleMutation {
     User user = SecurityUtil.getCurrentUser().orElseThrow(AuthenticationException::new);
     Article article =
         articleRepository.findBySlug(slug).orElseThrow(ResourceNotFoundException::new);
-    ArticleFavorite articleFavorite = new ArticleFavorite(article.getId(), user.getId());
-    articleFavoriteRepository.save(articleFavorite);
+    if (!articleFavoriteRepository.find(article.getId(), user.getId()).isPresent()) {
+      articleFavoriteRepository.save(new ArticleFavorite(article.getId(), user.getId()));
+    }
     return DataFetcherResult.<ArticlePayload>newResult()
         .data(ArticlePayload.newBuilder().build())
         .localContext(article)

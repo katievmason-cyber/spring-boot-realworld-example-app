@@ -4,6 +4,7 @@ import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +85,22 @@ public class ArticleFavoriteApiTest extends TestWithCurrentUser {
         .body("article.id", equalTo(article.getId()));
 
     verify(articleFavoriteRepository).save(any());
+  }
+
+  @Test
+  public void should_not_duplicate_favorite_when_already_favorited() throws Exception {
+    when(articleFavoriteRepository.find(eq(article.getId()), eq(user.getId())))
+        .thenReturn(Optional.of(new ArticleFavorite(article.getId(), user.getId())));
+
+    given()
+        .header("Authorization", "Token " + token)
+        .when()
+        .post("/articles/{slug}/favorite", article.getSlug())
+        .then()
+        .statusCode(200)
+        .body("article.id", equalTo(article.getId()));
+
+    verify(articleFavoriteRepository, never()).save(any());
   }
 
   @Test

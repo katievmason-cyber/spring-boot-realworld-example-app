@@ -4,6 +4,8 @@ import static io.restassured.module.mockmvc.RestAssuredMockMvc.given;
 import static org.hamcrest.core.IsEqual.equalTo;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.restassured.module.mockmvc.RestAssuredMockMvc;
@@ -83,6 +85,21 @@ public class CurrentUserApiTest extends TestWithCurrentUser {
   }
 
   @Test
+  public void should_get_401_with_malformed_authorization_header() throws Exception {
+    when(userQueryService.findById(any())).thenReturn(Optional.of(userData));
+    for (String header :
+        new String[] {"Bearer " + token, "Token", token, "Token " + token + " extra"}) {
+      given()
+          .contentType("application/json")
+          .header("Authorization", header)
+          .when()
+          .get("/user")
+          .then()
+          .statusCode(401);
+    }
+  }
+
+  @Test
   public void should_update_current_user_profile() throws Exception {
     String newEmail = "newemail@example.com";
     String newBio = "updated";
@@ -142,6 +159,52 @@ public class CurrentUserApiTest extends TestWithCurrentUser {
         .then()
         .statusCode(422)
         .body("errors.email[0]", equalTo("email already exist"));
+  }
+
+  @Test
+  public void should_get_error_if_username_exists_when_update_user_profile() throws Exception {
+    String newEmail = "newemail@example.com";
+    String newBio = "updated";
+    String newUsername = "takenusername";
+
+    Map<String, Object> param = prepareUpdateParam(newEmail, newBio, newUsername);
+
+    when(userRepository.findByEmail(eq(newEmail))).thenReturn(Optional.empty());
+    when(userRepository.findByUsername(eq(newUsername)))
+        .thenReturn(Optional.of(new User("other@example.com", newUsername, "123", "", "")));
+
+    when(userQueryService.findById(eq(user.getId()))).thenReturn(Optional.of(userData));
+
+    given()
+        .contentType("application/json")
+        .header("Authorization", "Token " + token)
+        .body(param)
+        .when()
+        .put("/user")
+        .then()
+        .statusCode(422)
+        .body("errors.username[0]", equalTo("username already exist"));
+
+    verify(userRepository, never()).save(any());
+  }
+
+  @Test
+  public void should_allow_update_with_own_email_and_username() throws Exception {
+    Map<String, Object> param = prepareUpdateParam(email, "updated", username);
+
+    when(userRepository.findByEmail(eq(email))).thenReturn(Optional.of(user));
+    when(userQueryService.findById(eq(user.getId()))).thenReturn(Optional.of(userData));
+
+    given()
+        .contentType("application/json")
+        .header("Authorization", "Token " + token)
+        .body(param)
+        .when()
+        .put("/user")
+        .then()
+        .statusCode(200);
+
+    verify(userRepository).save(eq(user));
   }
 
   private HashMap<String, Object> prepareUpdateParam(
