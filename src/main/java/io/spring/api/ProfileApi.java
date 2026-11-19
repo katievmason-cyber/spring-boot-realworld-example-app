@@ -1,5 +1,6 @@
 package io.spring.api;
 
+import io.spring.api.exception.InvalidOperationException;
 import io.spring.api.exception.ResourceNotFoundException;
 import io.spring.application.ProfileQueryService;
 import io.spring.application.data.ProfileData;
@@ -41,9 +42,16 @@ public class ProfileApi {
         .findByUsername(username)
         .map(
             target -> {
-              FollowRelation followRelation = new FollowRelation(user.getId(), target.getId());
-              userRepository.saveRelation(followRelation);
-              return profileResponse(profileQueryService.findByUsername(username, user).get());
+              if (target.getId().equals(user.getId())) {
+                throw new InvalidOperationException("cannot follow yourself");
+              }
+              if (!userRepository.findRelation(user.getId(), target.getId()).isPresent()) {
+                userRepository.saveRelation(new FollowRelation(user.getId(), target.getId()));
+              }
+              return profileResponse(
+                  profileQueryService
+                      .findByUsername(username, user)
+                      .orElseThrow(ResourceNotFoundException::new));
             })
         .orElseThrow(ResourceNotFoundException::new);
   }

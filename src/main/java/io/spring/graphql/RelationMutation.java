@@ -3,6 +3,7 @@ package io.spring.graphql;
 import com.netflix.graphql.dgs.DgsComponent;
 import com.netflix.graphql.dgs.DgsData;
 import com.netflix.graphql.dgs.InputArgument;
+import io.spring.api.exception.InvalidOperationException;
 import io.spring.api.exception.ResourceNotFoundException;
 import io.spring.application.ProfileQueryService;
 import io.spring.application.data.ProfileData;
@@ -29,8 +30,12 @@ public class RelationMutation {
         .findByUsername(username)
         .map(
             target -> {
-              FollowRelation followRelation = new FollowRelation(user.getId(), target.getId());
-              userRepository.saveRelation(followRelation);
+              if (target.getId().equals(user.getId())) {
+                throw new InvalidOperationException("cannot follow yourself");
+              }
+              if (!userRepository.findRelation(user.getId(), target.getId()).isPresent()) {
+                userRepository.saveRelation(new FollowRelation(user.getId(), target.getId()));
+              }
               Profile profile = buildProfile(username, user);
               return ProfilePayload.newBuilder().profile(profile).build();
             })
@@ -54,7 +59,10 @@ public class RelationMutation {
   }
 
   private Profile buildProfile(@InputArgument("username") String username, User current) {
-    ProfileData profileData = profileQueryService.findByUsername(username, current).get();
+    ProfileData profileData =
+        profileQueryService
+            .findByUsername(username, current)
+            .orElseThrow(ResourceNotFoundException::new);
     return Profile.newBuilder()
         .username(profileData.getUsername())
         .bio(profileData.getBio())

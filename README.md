@@ -36,7 +36,13 @@ And the code is organized as this:
 
 Integration with Spring Security and add other filter for jwt token process.
 
-The secret key is stored in `application.properties`.
+The JWT signing secret is read from the `JWT_SECRET` environment variable (`jwt.secret` in `application.properties`). It must be at least 64 bytes because tokens are signed with HS512. The built-in default is for local development only; always set your own secret in any real deployment, e.g.
+
+    export JWT_SECRET=$(openssl rand -base64 64 | tr -d '\n')
+
+> The secret that used to be committed to this repository is compromised. Generate a fresh one for any real deployment; changing the secret invalidates all previously issued tokens.
+
+CORS origins are configured with the `CORS_ALLOWED_ORIGINS` environment variable (`cors.allowed-origins`), a comma-separated list that defaults to common localhost dev frontends (`http://localhost:3000`, `4100`, `4200`, `5173`).
 
 # Database
 
@@ -44,7 +50,7 @@ It uses a ~~H2 in-memory database~~ sqlite database (for easy local test without
 
 # Getting started
 
-You'll need Java 11 installed.
+You'll need Java 17 installed.
 
     ./gradlew bootRun
 
